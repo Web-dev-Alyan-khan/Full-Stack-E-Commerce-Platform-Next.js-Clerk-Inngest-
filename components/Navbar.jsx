@@ -9,7 +9,7 @@ import Image from "next/image";
 import { useClerk, UserButton, useUser } from "@clerk/nextjs";
 
 const Navbar = () => {
-  const { isSeller, router } = useAppContext();
+  const { isSeller, router ,user} = useAppContext();
   const { openSignIn } = useClerk();
   const { isSignedIn } = useUser();
 
