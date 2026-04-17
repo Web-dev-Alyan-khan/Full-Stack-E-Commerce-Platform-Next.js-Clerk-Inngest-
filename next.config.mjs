@@ -5,19 +5,21 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
-        pathname: "/**", // ✅ FIX (must start with /)
+        pathname: "/**", 
       },
       {
         protocol: "https",
         hostname: "raw.githubusercontent.com",
-        pathname: "/**", // ✅ FIX
+        pathname: "/**",
       },
     ],
   },
-
-  experimental: {
-    serverActions: true, // 🚀 good for modern Next.js
+  // Server Actions are enabled by default in Next.js 14+. 
+  // Only include this if you are on an older version of Next.js 13.
+  /* experimental: {
+    serverActions: true, 
   },
+  */
 };
 
 export default nextConfig;

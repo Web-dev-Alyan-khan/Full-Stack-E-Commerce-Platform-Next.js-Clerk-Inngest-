@@ -2,19 +2,70 @@
 import React, { useState } from "react";
 import { assets } from "@/assets/assets";
 import Image from "next/image";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { useAppContext } from "@/context/AppContext"; // Import your context
 
 const AddProduct = () => {
+  // Logic: Get token from context
+  const { getToken } = useAppContext();
 
-  const [files, setFiles] = useState([]);
+  // Logic: Initialize with 4 slots to match your array map
+  const [files, setFiles] = useState([null, null, null, null]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Earphone');
   const [price, setPrice] = useState('');
   const [offerPrice, setOfferPrice] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
+    try {
+      // Logic: Retrieve the Clerk/Auth token
+      const token = await getToken();
+      console.log("Token status:", token ? "Exists" : "Missing");
+      const formData = new FormData();
+
+      // Logic: Append text fields
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('category', category);
+      formData.append('price', price);
+      formData.append('offerPrice', offerPrice);
+
+      // Logic: Append only actual files selected by the user
+      files.forEach((file) => {
+        if (file) {
+          formData.append('image', file);
+        }
+      });
+
+      const { data } = await axios.post('/api/product/add', formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data' 
+        }
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+        // Logic: Reset form fields on success
+        setName('');
+        setDescription('');
+        setPrice('');
+        setOfferPrice('');
+        setFiles([null, null, null, null]);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -84,7 +135,7 @@ const AddProduct = () => {
               id="category"
               className="outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500/40"
               onChange={(e) => setCategory(e.target.value)}
-              defaultValue={category}
+              value={category}
             >
               <option value="Earphone">Earphone</option>
               <option value="Headphone">Headphone</option>
@@ -124,11 +175,14 @@ const AddProduct = () => {
             />
           </div>
         </div>
-        <button type="submit" className="px-8 py-2.5 bg-orange-600 text-white font-medium rounded">
-          ADD
+        <button 
+          disabled={loading}
+          type="submit" 
+          className="px-8 py-2.5 bg-orange-600 text-white font-medium rounded disabled:bg-orange-400"
+        >
+          {loading ? 'Adding...' : 'ADD'}
         </button>
       </form>
-      {/* <Footer /> */}
     </div>
   );
 };

@@ -1,21 +1,38 @@
 'use client'
 import React, { useEffect, useState } from "react";
-import { assets, productsDummyData } from "@/assets/assets";
+import { assets } from "@/assets/assets";
 import Image from "next/image";
 import { useAppContext } from "@/context/AppContext";
 import Footer from "@/components/seller/Footer";
 import Loading from "@/components/Loading";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 const ProductList = () => {
 
-  const { router } = useAppContext()
+  const { router, getToken } = useAppContext() // Logic: Added getToken from context
 
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
 
+  // Logic: Real API call to fetch products
   const fetchSellerProduct = async () => {
-    setProducts(productsDummyData)
-    setLoading(false)
+    try {
+      const token = await getToken();
+      const { data } = await axios.get('/api/product/seller-list', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (data.success) {
+        setProducts(data.products);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -44,14 +61,15 @@ const ProductList = () => {
                   <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate">
                     <div className="bg-gray-500/10 rounded p-2">
                       <Image
-                        src={product.image[0]}
+                        /* Logic: Use product.images[0] (plural) as per your model */
+                        src={product.images && product.images[0] ? product.images[0] : assets.upload_area}
                         alt="product Image"
                         className="w-16"
                         width={1280}
                         height={720}
                       />
                     </div>
-                    <span className="truncate w-full">
+                    <span className="truncate w-full text-gray-700 font-medium">
                       {product.name}
                     </span>
                   </td>

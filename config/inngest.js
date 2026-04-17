@@ -1,6 +1,7 @@
 import { Inngest } from "inngest";
 import dbConnect from "./db";
 import User from "@/models/userModel";
+import Order from "@/models/OrderModel";
 
 // Initialize Inngest
 export const inngest = new Inngest({
@@ -62,7 +63,7 @@ export const syncUserUpdate = inngest.createFunction(
 );
 
 
-// ✅ 3. Sync User Deletion
+// 3. Sync User Deletion
 export const syncUserDeletion = inngest.createFunction(
   {
     id: "delete-user-from-clerk",
@@ -76,5 +77,43 @@ export const syncUserDeletion = inngest.createFunction(
     await User.findByIdAndDelete(id);
 
     return { status: "success", message: "User Deleted" };
+  }
+);
+
+//Inngest Founction to create user order in database
+export const createUserOrder = inngest.createFunction(
+  { 
+    id: "create-user-order", // v4 unique ID
+    retries: 5 
+  },
+  { event: "order/create" }, // v4 Trigger syntax
+  async ({ event, step }) => {
+    const { userId, items, amount, address } = event.data;
+
+    // 1. Database Connection
+    await dbConnect();
+
+    // 2. Save Order to Database
+    const order = await step.run("save-order", async () => {
+      return await Order.create({
+        userId,
+        items,
+        amount,
+        address,
+        payment: false,
+        status: "Order Placed",
+        date: Date.now(),
+      });
+    });
+
+    // 3. Clear User Cart in Database
+    await step.run("clear-cart", async () => {
+      await User.findByIdAndUpdate(userId, { cartItems: {} });
+    });
+
+    return { 
+        success: true, 
+        orderId: order._id 
+    };
   }
 );

@@ -4,8 +4,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Image from "next/image";
 import { useState } from "react";
+import { useAppContext } from "@/context/AppContext";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 const AddAddress = () => {
+
+    const { getToken, router } = useAppContext()
 
     const [address, setAddress] = useState({
         fullName: '',
@@ -18,7 +23,29 @@ const AddAddress = () => {
 
     const onSubmitHandler = async (e) => {
         e.preventDefault();
+        try {
+            const token = await getToken();
+            // Check if token exists before sending
+        if (!token) {
+            toast.error("Session expired. Please login again.");
+            return;
+        }
+            // Added the address state as the body and headers for authentication
+            const { data } = await axios.post('/api/user/add-address', address, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
 
+            if (data.success) {
+                toast.success(data.message);
+                router.push('/cart'); // Redirect to address list page
+            } else {
+                toast.error(data.message);
+            }
+
+        } catch (error) {
+            //  Error handling for the API call
+            toast.error(error.response?.data?.message || error.message);
+        }
     }
 
     return (
@@ -34,6 +61,7 @@ const AddAddress = () => {
                             className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
                             type="text"
                             placeholder="Full name"
+                            required // Added browser-level validation
                             onChange={(e) => setAddress({ ...address, fullName: e.target.value })}
                             value={address.fullName}
                         />
@@ -41,6 +69,7 @@ const AddAddress = () => {
                             className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
                             type="text"
                             placeholder="Phone number"
+                            required
                             onChange={(e) => setAddress({ ...address, phoneNumber: e.target.value })}
                             value={address.phoneNumber}
                         />
@@ -48,14 +77,15 @@ const AddAddress = () => {
                             className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
                             type="text"
                             placeholder="Pin code"
+                            required
                             onChange={(e) => setAddress({ ...address, pincode: e.target.value })}
                             value={address.pincode}
                         />
                         <textarea
                             className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500 resize-none"
-                            type="text"
                             rows={4}
                             placeholder="Address (Area and Street)"
+                            required
                             onChange={(e) => setAddress({ ...address, area: e.target.value })}
                             value={address.area}
                         ></textarea>
@@ -64,6 +94,7 @@ const AddAddress = () => {
                                 className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
                                 type="text"
                                 placeholder="City/District/Town"
+                                required
                                 onChange={(e) => setAddress({ ...address, city: e.target.value })}
                                 value={address.city}
                             />
@@ -71,6 +102,7 @@ const AddAddress = () => {
                                 className="px-2 py-2.5 focus:border-orange-500 transition border border-gray-500/30 rounded outline-none w-full text-gray-500"
                                 type="text"
                                 placeholder="State"
+                                required
                                 onChange={(e) => setAddress({ ...address, state: e.target.value })}
                                 value={address.state}
                             />

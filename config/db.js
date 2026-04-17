@@ -1,50 +1,40 @@
 import mongoose from "mongoose";
+import dns from "dns";
+
+// Fix DNS (good for Pakistan / slow ISP)
+dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable inside .env.local");
+  throw new Error("❌ MONGODB_URI missing in .env");
 }
 
-/**
- * Global is used here to maintain a cached connection across hot reloads
- * in development. This prevents connections growing exponentially.
- */
-let cached = global.mongoose;
-
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
-}
+// Global cache (for Next.js hot reload)
+let cached = global.mongoose || { conn: null, promise: null };
 
 async function dbConnect() {
-  if (cached.conn) {
-    return cached.conn;
-  }
-
-  if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-
-    // Note: Appending the DB name here is correct. 
-    // I fixed the spelling to 'E-Commerce-Platform'
-    cached.promise = mongoose
-      .connect(`${MONGODB_URI}/E-Commerce-Platform`, opts)
-      .then((mongoose) => {
-        console.log("✅ MongoDB Connected Successfully");
-        return mongoose;
-      });
-  }
-
   try {
-    cached.conn = await cached.promise;
-  } catch (e) {
-    cached.promise = null;
-    console.error("❌ MongoDB Connection Error:", e);
-    throw e;
-  }
+    if (cached.conn) return cached.conn;
 
-  return cached.conn;
+    if (!cached.promise) {
+      cached.promise = mongoose.connect(MONGODB_URI, {
+        dbName: "E-Commerce-Platform",
+        bufferCommands: false,
+        serverSelectionTimeoutMS: 10000, // better than connectTimeoutMS
+      });
+    }
+
+    cached.conn = await cached.promise;
+
+    console.log("✅ MongoDB Connected");
+
+    return cached.conn;
+  } catch (error) {
+    cached.promise = null;
+    console.error("❌ MongoDB Error:", error.message);
+    throw error;
+  }
 }
 
-export default dbConnect 
+export default dbConnect;
