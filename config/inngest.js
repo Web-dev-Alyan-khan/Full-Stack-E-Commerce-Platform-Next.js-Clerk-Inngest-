@@ -80,13 +80,16 @@ export const syncUserDeletion = inngest.createFunction(
   }
 );
 
-//Inngest Founction to create user order in database
+// create order inngest founction
 export const createUserOrder = inngest.createFunction(
   { 
-    id: "create-user-order", // v4 unique ID
+    id: "create-user-order", 
+    // Triggers MUST be inside this first object in v4
+    triggers: [
+      { event: "order/create" }
+    ],
     retries: 5 
   },
-  { event: "order/create" }, // v4 Trigger syntax
   async ({ event, step }) => {
     const { userId, items, amount, address } = event.data;
 
@@ -95,7 +98,9 @@ export const createUserOrder = inngest.createFunction(
 
     // 2. Save Order to Database
     const order = await step.run("save-order", async () => {
-      return await Order.create({
+      // Note: Inngest steps should return JSON-serializable data. 
+      // Mongoose documents can sometimes cause issues, so we .toObject() or return the data.
+      const newOrder = await Order.create({
         userId,
         items,
         amount,
@@ -104,11 +109,12 @@ export const createUserOrder = inngest.createFunction(
         status: "Order Placed",
         date: Date.now(),
       });
+      return JSON.parse(JSON.stringify(newOrder));
     });
 
     // 3. Clear User Cart in Database
     await step.run("clear-cart", async () => {
-      await User.findByIdAndUpdate(userId, { cartItems: {} });
+      return await User.findByIdAndUpdate(userId, { cartItems: {} });
     });
 
     return { 
