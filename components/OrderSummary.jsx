@@ -1,51 +1,18 @@
 'use client'
 import { useAppContext } from "@/context/AppContext";
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import toast from "react-hot-toast";
 
 const OrderSummary = () => {
 
     const { currency, router, getCartCount, getCartAmount, getToken, user, cartItems, setCartItems } = useAppContext()
-    const [selectedAddress, setSelectedAddress] = useState(null);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [userAddresses, setUserAddresses] = useState([]);
-
-    // Fetch user addresses from backend
-const fetchUserAddresses = async () => {
-    try {
-        const token = await getToken();
-        const { data } = await axios.get('/api/user/get-address', {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-
-        if (data.success && data.addresses.length > 0) {
-            setUserAddresses(data.addresses);
-            // Explicitly set the first one so the "Please select" error goes away
-            setSelectedAddress(data.addresses[0]);
-        } else if (data.success && data.addresses.length === 0) {
-            // If no address exists, redirect them to add one
-            toast("Please add a shipping address first.");
-            router.push("/add-address");
-        }
-    } catch (error) {
-        console.error("Fetch Address Error:", error);
-    }
-};
-    const handleAddressSelect = (address) => {
-        setSelectedAddress(address);
-        setIsDropdownOpen(false);
-    };
 
     const createOrder = async () => {
         try {
-            if (!selectedAddress) {
-                return toast.error("Please select an address");
-            }
-
             // Convert cartItems object to Array for the API
             let cartItemsArray = Object.keys(cartItems).map((key) => ({ 
-                productId: key, // Match your schema field name
+                productId: key, 
                 quantity: cartItems[key] 
             }));
 
@@ -57,9 +24,8 @@ const fetchUserAddresses = async () => {
 
             const token = await getToken();
             
-            // Send the FULL address object to ensure Inngest captures the snapshot
+            // We remove the address field entirely from the request body
             const { data } = await axios.post('/api/order/create', {
-                address: selectedAddress, // Pass full object, not just ID
                 items: cartItemsArray
             }, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -67,7 +33,7 @@ const fetchUserAddresses = async () => {
 
             if (data.success) {
                 toast.success(data.message);
-                setCartItems({}); // Clear cart state
+                setCartItems({}); 
                 router.push('/order-placed');
             } else {
                 toast.error(data.message);
@@ -78,12 +44,6 @@ const fetchUserAddresses = async () => {
         }
     }
 
-    useEffect(() => {
-        if (user) {
-            fetchUserAddresses();
-        }
-    }, [user])
-
     return (
         <div className="w-full md:w-96 bg-gray-500/5 p-5">
             <h2 className="text-xl md:text-2xl font-medium text-gray-700">
@@ -92,50 +52,7 @@ const fetchUserAddresses = async () => {
             <hr className="border-gray-500/30 my-5" />
             
             <div className="space-y-6">
-                <div>
-                    <label className="text-base font-medium uppercase text-gray-600 block mb-2">
-                        Select Address
-                    </label>
-                    <div className="relative inline-block w-full text-sm border">
-                        <button
-                            className="peer w-full text-left px-4 pr-2 py-2 bg-white text-gray-700 focus:outline-none"
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        >
-                            <span className="truncate block pr-6">
-                                {selectedAddress
-                                    ? `${selectedAddress.fullName}, ${selectedAddress.area}, ${selectedAddress.city}`
-                                    : "Select Address"}
-                            </span>
-                            <svg className={`absolute right-2 top-2.5 w-5 h-5 transition-transform duration-200 ${isDropdownOpen ? "rotate-0" : "-rotate-90"}`}
-                                xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#6B7280"
-                            >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-
-                        {isDropdownOpen && (
-                            <ul className="absolute w-full bg-white border shadow-lg mt-1 z-20 max-h-60 overflow-y-auto">
-                                {userAddresses.map((address, index) => (
-                                    <li
-                                        key={index}
-                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b last:border-none"
-                                        onClick={() => handleAddressSelect(address)}
-                                    >
-                                        <p className="font-medium">{address.fullName}</p>
-                                        <p className="text-xs text-gray-500 truncate">{address.area}, {address.city}</p>
-                                    </li>
-                                ))}
-                                <li
-                                    onClick={() => router.push("/add-address")}
-                                    className="px-4 py-3 hover:bg-orange-50 cursor-pointer text-center text-orange-600 font-medium bg-gray-50"
-                                >
-                                    + Add New Address
-                                </li>
-                            </ul>
-                        )}
-                    </div>
-                </div>
-
+                {/* PROMO CODE SECTION */}
                 <div>
                     <label className="text-base font-medium uppercase text-gray-600 block mb-2">
                         Promo Code
@@ -154,6 +71,7 @@ const fetchUserAddresses = async () => {
 
                 <hr className="border-gray-500/30 my-5" />
 
+                {/* PRICE CALCULATION SECTION */}
                 <div className="space-y-4">
                     <div className="flex justify-between text-base font-medium">
                         <p className="uppercase text-gray-600">Items {getCartCount()}</p>
