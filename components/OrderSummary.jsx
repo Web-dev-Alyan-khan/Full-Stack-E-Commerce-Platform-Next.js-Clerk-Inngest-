@@ -1,57 +1,26 @@
 'use client'
 import { useAppContext } from "@/context/AppContext";
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import toast from "react-hot-toast";
 
 const OrderSummary = () => {
     const { 
         currency, router, getCartCount, getCartAmount, 
-        getToken, user, cartItems, setCartItems 
+        getToken, cartItems, setCartItems 
     } = useAppContext();
 
-    const [selectedAddress, setSelectedAddress] = useState(null);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [userAddresses, setUserAddresses] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    // 1. Corrected Fetch Function: Now updates the state
-    const fetchUserAddresses = async () => {
-        try {
-            const token = await getToken();
-            const { data } = await axios.get('/api/user/get-address', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (data.success) {
-                setUserAddresses(data.addresses);
-                
-                // Auto-select the first address if available
-                if (data.addresses.length > 0) {
-                    setSelectedAddress(data.addresses[0]);
-                }
-            }
-        } catch (error) {
-            console.error("Fetch Address Error:", error);
-            toast.error("Failed to load shipping addresses");
-        }
-    };
-
-    const handleAddressSelect = (address) => {
-        setSelectedAddress(address);
-        setIsDropdownOpen(false);
-    };
+    // Calculate totals once here so we can use them in the UI and the API call
+    const cartAmount = getCartAmount();
+    const tax = Math.floor(cartAmount * 0.02);
+    const totalAmount = cartAmount + tax;
 
     const createOrder = async () => {
-        // Validation check
-        if (!selectedAddress) {
-            return toast.error("Please select an address");
-        }
-
         try {
             setLoading(true);
 
-            // Convert cart object to items array
             const items = Object.keys(cartItems)
                 .map((key) => ({
                     productId: key,
@@ -67,15 +36,16 @@ const OrderSummary = () => {
             const token = await getToken();
             
             const { data } = await axios.post('/api/order/create', {
-                address: selectedAddress,
-                items: items
+                address: { fullName: "User", area: "Checkout", city: "Default" }, 
+                items: items,
+                amount: totalAmount // Sending the calculated total including tax
             }, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
             if (data.success) {
-                toast.success(data.message);
-                setCartItems({}); // Clear cart
+                toast.success("Order Placed Successfully!");
+                setCartItems({}); 
                 router.push('/order-placed');
             } else {
                 toast.error(data.message);
@@ -87,68 +57,23 @@ const OrderSummary = () => {
         }
     };
 
-    // Trigger fetch on mount/user load
-    useEffect(() => {
-        if (user) {
-            fetchUserAddresses();
-        }
-    }, [user]);
-
-    const cartAmount = getCartAmount();
-    const tax = Math.floor(cartAmount * 0.02);
-    const totalAmount = cartAmount + tax;
-
     return (
         <div className="w-full md:w-96 bg-gray-500/5 p-5 rounded-lg shadow-sm">
             <h2 className="text-xl md:text-2xl font-medium text-gray-700">Order Summary</h2>
             <hr className="border-gray-500/30 my-5" />
             
             <div className="space-y-6">
-                {/* Address Selection */}
-                <div>
-                    <label className="text-xs font-bold uppercase text-gray-500 block mb-2">Shipping Address</label>
-                    <div className="relative w-full text-sm border bg-white rounded">
-                        <button
-                            className="w-full text-left px-4 py-3 text-gray-700 focus:outline-none flex justify-between items-center"
-                            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        >
-                            <span className="truncate">
-                                {selectedAddress
-                                    ? `${selectedAddress.fullName}, ${selectedAddress.city}`
-                                    : "Select Address"}
-                            </span>
-                            <svg className={`w-4 h-4 transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} 
-                                 fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                            </svg>
-                        </button>
-
-                        {isDropdownOpen && (
-                            <ul className="absolute w-full bg-white border shadow-xl mt-1 z-50 max-h-48 overflow-y-auto rounded">
-                                {userAddresses.length > 0 ? (
-                                    userAddresses.map((address, index) => (
-                                        <li key={index}
-                                            className="px-4 py-2 hover:bg-orange-50 cursor-pointer border-b last:border-none"
-                                            onClick={() => handleAddressSelect(address)}
-                                        >
-                                            <p className="font-medium text-gray-800">{address.fullName}</p>
-                                            <p className="text-xs text-gray-500">{address.area}, {address.city}</p>
-                                        </li>
-                                    ))
-                                ) : (
-                                    <li className="px-4 py-2 text-gray-400 text-center">No addresses found</li>
-                                )}
-                                <li onClick={() => router.push("/add-address")}
-                                    className="px-4 py-3 hover:bg-orange-600 hover:text-white cursor-pointer text-center text-orange-600 font-medium bg-gray-50 transition-colors"
-                                >
-                                    + Add New Address
-                                </li>
-                            </ul>
-                        )}
-                    </div>
+                {/* Navigation Button for Adding Address */}
+                <div className="bg-white p-4 rounded border border-gray-200 shadow-sm">
+                    <p className="text-sm text-gray-600 mb-2 font-medium">Shipping Address</p>
+                    <button 
+                        onClick={() => router.push('/add-address')}
+                        className="text-xs font-bold text-orange-600 hover:text-orange-700 uppercase tracking-wider transition-colors"
+                    >
+                        + Add or Update Address
+                    </button>
                 </div>
 
-                {/* Totals Section */}
                 <div className="space-y-3 pt-4 border-t border-gray-200">
                     <div className="flex justify-between text-sm">
                         <p className="text-gray-500">Subtotal ({getCartCount()} items)</p>
