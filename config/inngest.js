@@ -84,24 +84,19 @@ export const syncUserDeletion = inngest.createFunction(
 export const createUserOrder = inngest.createFunction(
   { 
     id: "create-user-order", 
-    // Triggers MUST be inside this first object in v4
-    triggers: [
-      { event: "order/create" }
-    ],
+    triggers: [{ event: "order/create" }],
     retries: 5 
   },
   async ({ event, step }) => {
     const { userId, items, amount, address } = event.data;
 
-    // 1. Database Connection
+    // 1. Database Connection (Ensure connection outside steps for stability)
     await dbConnect();
 
     // 2. Save Order to Database
     const order = await step.run("save-order", async () => {
-      // Note: Inngest steps should return JSON-serializable data. 
-      // Mongoose documents can sometimes cause issues, so we .toObject() or return the data.
       const newOrder = await Order.create({
-        userId,
+        userId, // Clerk User ID
         items,
         amount,
         address,
@@ -109,12 +104,21 @@ export const createUserOrder = inngest.createFunction(
         status: "Order Placed",
         date: Date.now(),
       });
+      
+      // Essential: Convert Mongoose Doc to plain JSON for Inngest state
       return JSON.parse(JSON.stringify(newOrder));
     });
 
     // 3. Clear User Cart in Database
     await step.run("clear-cart", async () => {
-      return await User.findByIdAndUpdate(userId, { cartItems: {} });
+      // FIX: Use findOneAndUpdate with clerkId because userId is a String from Clerk
+      // If your User model uses _id as the Clerk ID, use findByIdAndUpdate.
+      // Most common setup: { clerkId: userId }
+      return await User.findOneAndUpdate(
+        { clerkId: userId }, 
+        { cartItems: {} },
+        { new: true }
+      );
     });
 
     return { 

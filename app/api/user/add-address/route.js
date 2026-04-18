@@ -5,10 +5,8 @@ import Address from "@/models/AddressModel";
 
 export async function POST(request) {
     try {
-        // 1. Connect to Database
         await dbConnect();
 
-        // 2. Get Authenticated User ID from Clerk
         const { userId } = getAuth(request);
 
         if (!userId) {
@@ -18,10 +16,9 @@ export async function POST(request) {
             );
         }
 
-        // 3. Extract data from Request Body
         const { fullName, phoneNumber, pincode, area, city, state } = await request.json();
 
-        // 4. Basic Validation
+        // Check for missing fields
         if (!fullName || !phoneNumber || !pincode || !area || !city || !state) {
             return NextResponse.json(
                 { success: false, message: "All fields are required." },
@@ -29,10 +26,9 @@ export async function POST(request) {
             );
         }
 
-        // 5. Create and Save the Address
-        // Note: We use the userId from getAuth() to ensure security
+        // Create the address
         const newAddress = await Address.create({
-            userId,
+            userId, // This links the address specifically to the logged-in Clerk user
             fullName,
             phoneNumber,
             pincode,
@@ -41,7 +37,6 @@ export async function POST(request) {
             state
         });
 
-        // 6. Return Success Response
         return NextResponse.json(
             { 
                 success: true, 
@@ -52,10 +47,9 @@ export async function POST(request) {
         );
 
     } catch (error) {
-        console.error(" Add Address Error:", error.message);
-        
+        console.error("Add Address Error:", error.message);
         return NextResponse.json(
-            { success: false, message: "Internal Server Error", error: error.message },
+            { success: false, message: "Internal Server Error" },
             { status: 500 }
         );
     }
