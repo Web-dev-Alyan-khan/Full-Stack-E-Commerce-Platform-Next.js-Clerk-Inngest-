@@ -16,26 +16,20 @@ const OrderSummary = () => {
     const [loading, setLoading] = useState(false);
 
     // Fetch user addresses from backend
-    const fetchUserAddresses = async () => {
-        try {
-            const token = await getToken();
-            const { data } = await axios.get('/api/user/get-address', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-
-            if (data.success && data.addresses.length > 0) {
-                setUserAddresses(data.addresses);
-                setSelectedAddress(data.addresses[0]);
-            } else if (data.success && data.addresses.length === 0) {
-                toast("Please add a shipping address first.");
-                router.push("/add-address");
-            }
-        } catch (error) {
-            console.error("Fetch Address Error:", error);
-            toast.error("Failed to load addresses");
+   const fetchUserAddresses = async () => {
+    try {
+        const token = await getToken();
+        const { data } = await axios.get('/api/user/get-address', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        if (data.success) {
+            return data.addresses;
         }
-    };
-
+    } catch (error) {
+        console.error("Context Fetch Error", error);
+        return [];
+    }
+};
     const handleAddressSelect = (address) => {
         setSelectedAddress(address);
         setIsDropdownOpen(false);
