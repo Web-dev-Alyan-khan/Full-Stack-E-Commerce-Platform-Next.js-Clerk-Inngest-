@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { getAuth } from "@clerk/nextjs/server";
 import dbConnect from "@/config/db";
-import Address from "@/models/AddressModel";
+import Address from "@/models/AddressModel"; // Ensure this matches your file name
 
 export async function GET(request) {
     try {
-        // 1. Connect to the database
         await dbConnect();
 
-        // 2. Authenticate the user using Clerk
         const { userId } = getAuth(request);
 
-        // 3. If no user is logged in, return unauthorized
         if (!userId) {
             return NextResponse.json(
                 { success: false, message: "Unauthorized. Please log in." },
@@ -19,11 +16,9 @@ export async function GET(request) {
             );
         }
 
-        // 4. Find all addresses belonging to this specific userId
-        // .sort({ createdAt: -1 }) ensures the newest address appears first
+        // Fetch addresses for the authenticated user
         const addresses = await Address.find({ userId }).sort({ createdAt: -1 });
 
-        // 5. Return the list of addresses
         return NextResponse.json(
             { 
                 success: true, 
@@ -34,12 +29,10 @@ export async function GET(request) {
 
     } catch (error) {
         console.error("Get Address Error:", error.message);
-
         return NextResponse.json(
             { 
                 success: false, 
-                message: "Failed to fetch addresses", 
-                error: error.message 
+                message: "Failed to fetch addresses" 
             },
             { status: 500 }
         );

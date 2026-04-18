@@ -12,26 +12,29 @@ const OrderSummary = () => {
     const [userAddresses, setUserAddresses] = useState([]);
 
     // Fetch user addresses from backend
-    const fetchUserAddresses = async () => {
-        try {
-            const token = await getToken(); // getToken is asynchronous
-            const { data } = await axios.get('/api/user/get-address', { 
-                headers: { Authorization: `Bearer ${token}` } 
-            });
+   const fetchUserAddresses = async () => {
+    try {
+        const token = await getToken(); // getToken is async in Clerk context
+        
+        // Added leading "/" to ensure it hits the root API path
+        const { data } = await axios.get('/api/user/get-address', {
+            headers: { Authorization: `Bearer ${token}` }
+        });
 
-            if (data.success) {
-                setUserAddresses(data.addresses);
-                if (data.addresses.length > 0) {
-                    setSelectedAddress(data.addresses[0]);
-                }
-            } else {
-                toast.error(data.message);
+        if (data.success) {
+            setUserAddresses(data.addresses);
+            if (data.addresses.length > 0) {
+                setSelectedAddress(data.addresses[0]);
             }
-        } catch (error) {
-            toast.error(error.response?.data?.message || error.message);
+        } else {
+            toast.error(data.message);
         }
+    } catch (error) {
+        // If the error is 401, it means the token expired or user is logged out
+        console.error("Fetch Address Error:", error);
+        toast.error(error.response?.data?.message || "Error loading addresses");
     }
-
+};
     const handleAddressSelect = (address) => {
         setSelectedAddress(address);
         setIsDropdownOpen(false);
